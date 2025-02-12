@@ -1,0 +1,16 @@
+{
+  "name": "sea-loader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node ./create-sea.ts --entry ./main.cjs && ./a.out"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "CC0-1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=23.7.0"
+  }
+}
