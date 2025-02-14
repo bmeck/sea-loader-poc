@@ -4,6 +4,7 @@ import path from 'path'
 import os from 'os'
 import url from 'url'
 import { parseArgs } from 'util'
+import module from 'module'
 
 const args = parseArgs({
     allowPositionals: true,
@@ -47,14 +48,57 @@ const blob = path.join(seadir, seaname + '.blob')
 const bin = path.join(seadir, seaname) + (os.platform() === 'win32' ? '.exe' : '')
 const assets = {}
 const srcdir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'src')
+const metadir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'meta')
+fs.writeFileSync(path.join(metadir, '#start'), `sea:${url.pathToFileURL(main).href}`)
+assets['#start'] = path.join(metadir, '#start')
+module.registerHooks({
+    resolve(specifier, context, nextResolve) {
+        console.error(specifier, context)
+        if (specifier.startsWith('meta:')) {
+            const normalResolve = nextResolve(specifier.slice('meta:'.length), context)
+            if (normalResolve.format === 'json') {
+                normalResolve.importAttributes ??= Object.create(null)
+                normalResolve.importAttributes.type = 'json'
+            }
+            return {
+                ...normalResolve,
+                url: `meta:${normalResolve.url}`
+            }
+        } else {
+            return nextResolve(specifier, context)
+        }
+    },
+    load(url, context, nextLoad) {
+        if (url.startsWith('meta:')) {
+            const normalLoad = nextLoad(url.slice('meta:'.length), context)
+            // console.error({normalResolve: normalLoad})
+            return {
+                format: 'commonjs',
+                source: `module.exports = ${JSON.stringify({format: normalLoad.format})}`
+            }
+        } else {
+            return nextLoad(url, context)
+        }
+    },
+})
+fs.mkdirSync(metadir, {recursive: true})
+let metaid = 1;
+
 for (const filepath of fs.readdirSync(srcdir,{ recursive: true, encoding: 'utf-8' })) {
     const abspath = path.join(srcdir, filepath)
     if (fs.statSync(abspath).isFile()) {
-        assets[filepath] = abspath
+        const key = url.pathToFileURL(abspath).href
+        const metakey = `meta:${key}`
+        assets[key] = abspath
+        const metaid_for_path = `${metaid++}`
+        const metapath = path.join(metadir, metaid_for_path)
+        const meta = (await import(metakey)).default
+        fs.writeFileSync(metapath, JSON.stringify(meta))
+        assets[metakey] = metapath
     }
 }
 const seaconfig = {
-    main,
+    main: path.resolve('main.cjs'),
     output: blob,
     disableExperimentalSEAWarning: true,
     // useSnapshot: true, TODO

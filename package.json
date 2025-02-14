@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node ./create-sea.ts --entry ./main.cjs && ./a.out"
+    "test": "node ./create-sea.ts --entry ./src/a/entry.mjs && ./a.out"
   },
   "keywords": [],
   "author": "",
